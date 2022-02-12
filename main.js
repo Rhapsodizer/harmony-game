@@ -24,13 +24,13 @@ const distances = [["ionian",    [2,2,1,2,2,2,1]],
                    ["locrian",   [2,1,2,2,2,1,2]]]
 
 const c = new AudioContext()
-var attack = 0.01;
-var release = 0.2;
 
 // Global functions:----------------------------------------------------------------------
 
 //Play note of shifted "notes" array (shifting based on first note of scale)
 function play(note, fundamental) {
+    const attack = 0.01;
+    const release = 0.2;
     i = shiftArray(fundamental).indexOf(note)
     const o = c.createOscillator();
     const g = c.createGain();
@@ -46,7 +46,7 @@ function play(note, fundamental) {
 }
 
 function playScale() {
-    //IIFE Immediately invoked function expression
+    //Using IIFE Immediately invoked function expression
     for (i=0; i<7; i++){
         (function(val) {
             setTimeout(function () {play(scale[val], scale[0])}, 270*val)
@@ -56,7 +56,7 @@ function playScale() {
 
 // Intended for shifting "notes" array
 function shiftArray(index) {
-    // to shift "notes" array
+    // Index must be a string
     if (isNaN(index)) {
         toShift = [...notes]
         f = toShift.indexOf(index)
@@ -66,14 +66,6 @@ function shiftArray(index) {
         }
         shifted = toShift
     }
-    //to shift any array
-    // else {
-    //     for (i=0; i<index; i++) {
-    //         toShift.push(toShift[i])
-    //     }
-    // shifted = toShift.splice(index, toShift.length)
-    // }
-
     return shifted
 }
 
@@ -108,7 +100,10 @@ app.component('mainmenu', {
         <h1> AVAILABLE GAMES: <button v-for='game in games' @click="currentPage = game">{{ game }}</button></h1>
         <component :is='currentPage' />
         <div id="game"></div>
-    `
+        <h1> GAMES: <button v-for='game in games' @click="currentPage = game">{{ game }}</button></h1>
+        <div id="game">
+            <component :is='currentPage' />
+        </div>
 })
 
 app.component('Guess Note', {
@@ -124,7 +119,8 @@ app.component('Guess Note', {
             questionsNumberTot: 10,
             questionsNumberDone: 0,
 
-            checked: false
+            checked: false,
+            hint: false
         }
     },
     methods: {
@@ -207,6 +203,7 @@ app.component('Guess Note', {
             <button v-if="questionsNumberDone < questionsNumberTot" @click="generateScale(); questionsNumberDone += 1">Skip</button>
             <button onclick="playScale()">Listen scale</button>
             <button>Hint: {{ generatedScaleName }}</button></h4>
+            <button id="hint" @click="this.hint = true">{{hint ? generatedScaleName : 'Hint'}}</button></h4>
             <div><input type="checkbox" v-model="checked">Use mic</div>
         </div>
         <visualizer v-if="checked" @sendAnswer=checkAnswer></visualizer>
@@ -319,7 +316,8 @@ app.component('Reorder Notes', {
             clicked: false,
             firstNote: null,
             secondNote: null,
-            moves: 0
+            moves: 0,
+            hint: false
         }
     },
     methods: {
@@ -370,16 +368,27 @@ app.component('Reorder Notes', {
         swap(el) {
             if (this.clicked == true){
                 this.secondNote = el
+                document.getElementById(this.secondNote).style.backgroundColor = "yellow"
                 a = this.generatedScale.indexOf(this.firstNote)
                 b = this.generatedScale.indexOf(this.secondNote)
                 this.generatedScale[a] = this.secondNote
                 this.generatedScale[b] = this.firstNote
                 this.clicked = false
                 this.moves += 1
+                clear(this.firstNote, this.secondNote)
                 this.checkAnswer()
             } else {
                 this.clicked = true
                 this.firstNote = el
+                document.getElementById(this.firstNote).style.backgroundColor = "yellow"
+            }
+
+            function clear(firstNote,secondNote) {
+                setTimeout(function(){
+                    document.getElementById(firstNote).style.backgroundColor = null;
+                    document.getElementById(secondNote).style.backgroundColor = null;
+                }, 400)
+
             }
         }
     },
@@ -395,7 +404,17 @@ app.component('Reorder Notes', {
             <button v-if="questionsNumberDone < questionsNumberTot" @click="generateScale(); questionsNumberDone += 1">Skip</button>
             <button>Hint: {{ generatedScaleName }}</button>
         </div>
-    `
+    <div>
+        <h2><button @click="started=true; resetGame(); generateScale()">New game</button></h2>
+        <div v-if="started==true">Question {{ questionsNumberDone }} Score: {{ score }}/{{ questionsNumberTot }}</div>
+        <div v-if="started==true">Moves: {{ moves }}</div>
+    </div>
+    <div v-if="started">
+        <h3><div class="draggable" v-for="note in generatedScale" v-bind:id="note" @click="swap(note)">{{ note }}</div></h3>
+        <button onclick="playScale()">Listen scale</button>
+        <button v-if="questionsNumberDone < questionsNumberTot" @click="generateScale(); questionsNumberDone += 1">Skip</button>
+        <button id="hint" @click="this.hint = true">{{hint ? generatedScaleName : 'Hint'}}</button>
+    </div>
 })
 
 app.component('visualizer', {
